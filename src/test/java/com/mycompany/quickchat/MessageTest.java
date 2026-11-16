@@ -1,88 +1,107 @@
 package com.mycompany.quickchat;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.util.Arrays;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Part 3 unit tests (JUnit 5).
+ * Each test uses the exact test data from the task and checks the result with assertEquals.
+ */
 public class MessageTest {
 
-    private static final String MSG1 = "Hi Mike, can you join us for dinner tonight?";
-    private static final String MSG2 = "Hi Keegan, did you receive the payment?";
+    // The five test messages from the task
+    private Message m1;
+    private Message m2;
+    private Message m3;
+    private Message m4;
+    private Message m5;
 
+    /**
+     * Runs before every test. It clears the arrays and then creates
+     * the five test messages with the flags given in the task.
+     */
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         Message.resetAll();
+
+        // Test Data Messages 1 to 5 (ID, message number, recipient, message)
+        m1 = new Message("1000000001", 1, "+27834557896", "Did you get the cake?");
+        m2 = new Message("2000000002", 2, "+27838884567", "Where are you? You are late! I have asked you to be on time.");
+        m3 = new Message("3000000003", 3, "+27834484567", "Yohoooo, I am at your gate.");
+        m4 = new Message("0838884567", 4, "0838884567", "It is dinner time!");
+        m5 = new Message("5000000005", 5, "+27838884567", "Ok, I am leaving without you.");
+
+        // Apply each message's flag: 1 = Sent, 2 = Disregard, 3 = Stored
+        m1.sentMessage(1);  // Sent
+        m2.sentMessage(3);  // Stored
+        m3.sentMessage(2);  // Disregard
+        m4.sentMessage(1);  // Sent
+        m5.sentMessage(3);  // Stored
     }
 
+    /** The Sent Messages array must contain only messages 1 and 4. */
     @Test
-    void messageLengthSuccess() {
-        Message m = new Message("0012345678", 0, "+27718693002", MSG1);
-        assertEquals("Message ready to send.", m.checkMessageLength());
+    public void testSentMessagesArrayCorrectlyPopulated() {
+        assertEquals(Arrays.asList("Did you get the cake?", "It is dinner time!"),
+                Message.getSentMessageTexts());
     }
 
+    /** The Disregarded Messages array must contain only message 3. */
     @Test
-    void messageLengthFailure() {
-        String longText = "a".repeat(260);
-        Message m = new Message("0012345678", 0, "+27718693002", longText);
-        assertEquals("Message exceeds 250 characters by 10; please reduce the size.",
-                m.checkMessageLength());
+    public void testDisregardedMessagesArrayCorrectlyPopulated() {
+        assertEquals(Arrays.asList("Yohoooo, I am at your gate."),
+                Message.getDisregardedMessageTexts());
     }
 
+    /** The Message Hash and Message ID arrays must each hold all 5 messages. */
     @Test
-    void recipientSuccess() {
-        Message m = new Message("0012345678", 0, "+27718693002", MSG1);
-        assertEquals("Cell phone number successfully captured.", m.checkRecipientCell());
+    public void testMessageHashAndIDArraysPopulated() {
+        assertEquals(5, Message.getMessageHashes().size());
+        assertEquals(5, Message.getMessageIDs().size());
     }
 
+    /** The longest stored message must be message 2. */
     @Test
-    void recipientFailure() {
-        Message m = new Message("0412345678", 1, "08575975889", MSG2);
-        assertEquals("Cell phone number is incorrectly formatted or does not contain "
-                + "an international code. Please correct the number and try again.",
-                m.checkRecipientCell());
+    public void testDisplayLongestMessage() {
+        assertEquals("Where are you? You are late! I have asked you to be on time.",
+                Message.longestStoredMessage());
     }
 
+    /** Searching for message 4's ID must return "It is dinner time!". */
     @Test
-    void messageHashTestCase1() {
-        Message m = new Message("0012345678", 0, "+27718693002", MSG1);
-        assertEquals("00:0:HITONIGHT", m.createMessageHash());
+    public void testSearchForMessageID() {
+        assertEquals("It is dinner time!", Message.searchByMessageID("0838884567"));
     }
 
+    /** Searching for +27838884567 must return messages 2 and 5. */
     @Test
-    void messageHashesInLoop() {
-        String[] ids = {"0012345678", "0412345678"};
-        int[] numbers = {0, 1};
-        String[] texts = {MSG1, MSG2};
-        String[] expected = {"00:0:HITONIGHT", "04:1:HIPAYMENT"};
-
-        for (int i = 0; i < texts.length; i++) {
-            Message m = new Message(ids[i], numbers[i], "+27718693002", texts[i]);
-            assertEquals(expected[i], m.createMessageHash());
-        }
+    public void testSearchAllMessagesForRecipient() {
+        assertEquals(Arrays.asList("Where are you? You are late! I have asked you to be on time.",
+                "Ok, I am leaving without you."),
+                Message.messagesForRecipient("+27838884567"));
     }
 
+    /** Deleting message 2 by its hash must return the success message. */
     @Test
-    void messageIDCreated() {
-        Message m = new Message("+27718693002", MSG1);
-        assertTrue(m.checkMessageID());
-        assertEquals(10, m.getMessageID().length());
-        assertEquals("Message ID generated: " + m.getMessageID(), m.messageIDGenerated());
+    public void testDeleteMessageUsingHash() {
+        assertEquals("Message: \"Where are you? You are late! I have asked you to be on time\" successfully deleted.",
+                Message.deleteByHash(m2.getMessageHash()));
     }
 
+    /** The report must list the hash, recipient and message of every sent message. */
     @Test
-    void messageSentOptions() {
-        Message m = new Message("0012345678", 0, "+27718693002", MSG1);
-        assertEquals("Message successfully sent.", m.sentMessage(1));
-        assertEquals("Press 0 to delete the message.", m.sentMessage(2));
-        assertEquals("Message successfully stored.", m.sentMessage(3));
-    }
-
-    @Test
-    void totalMessagesSent() {
-        Message m1 = new Message("0012345678", 0, "+27718693002", MSG1);
-        Message m2 = new Message("0412345678", 1, "08575975889", MSG2);
-        m1.sentMessage(1);   // Test data 1: Send
-        m2.sentMessage(2);   // Test data 2: Discard
-        assertEquals(1, Message.returnTotalMessages());
+    public void testDisplayReport() {
+        // Build the report we expect for the two sent messages (1 and 4)
+        String expected = "Message ID: 1000000001"
+                + "\nMessage Hash: " + m1.getMessageHash()
+                + "\nRecipient: +27834557896"
+                + "\nMessage: Did you get the cake?\n\n"
+                + "Message ID: 0838884567"
+                + "\nMessage Hash: " + m4.getMessageHash()
+                + "\nRecipient: 0838884567"
+                + "\nMessage: It is dinner time!\n\n";
+        assertEquals(expected, Message.printMessages());
     }
 }
